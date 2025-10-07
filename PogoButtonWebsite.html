@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>PogoPlanet Button (Web)</title>
+<style>
+  :root{ --bg:#1F2A39; --bg2:#2C3D4E; --btn:#288164; --text:#E3E3E3; --muted:#C9D3DF; --warn:#F59E0B; --err:#EF4444; --ok:#22C55E; }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{ margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2) 70%);color:var(--text);
+        font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;font-weight:900;letter-spacing:.2px; }
+  .wrap{max-width:860px;margin:0 auto;padding:16px}
+  .card{background:rgba(44,61,78,.75);border:1px solid rgba(233,239,246,.12);border-radius:16px;padding:16px;backdrop-filter:blur(6px)}
+  h1{margin:0 0 12px;font-size:22px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  input,button{height:48px;border-radius:12px;border:1px solid rgba(233,239,246,.18);background:#1C2A39;color:var(--text);padding:0 12px;font-size:16px;font-weight:900}
+  input::placeholder{color:#9fb0c0;font-weight:700}
+  button.primary{background:var(--btn);border:none;color:var(--text);box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  button.primary:active{transform:translateY(1px);box-shadow:0 3px 0 rgba(0,0,0,.25)}
+  button[disabled]{opacity:.55;filter:grayscale(.2)}
+  label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .status{margin-top:8px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#1C2A39;border:1px solid rgba(233,239,246,.15)}
+  .dot{width:10px;height:10px;border-radius:999px;background:#8aa0b7}
+  .ok{background:var(--ok)} .warn{background:var(--warn)} .err{background:var(--err)}
+  .pad{user-select:none;-webkit-user-select:none;touch-action:none;height:58vh;min-height:320px;margin-top:14px;border-radius:18px;border:2px dashed rgba(233,239,246,.18);
+       display:flex;align-items:center;justify-content:center;background:radial-gradient(900px 560px at 50% 10%, rgba(40,129,100,.30), transparent 60%), rgba(28,42,57,.75);
+       font-size:30px;}
+  .pad.holding{background:radial-gradient(900px 560px at 50% 10%, rgba(40,129,100,.55), transparent 60%), rgba(28,42,57,.95);border-color:rgba(40,129,100,.65)}
+  .row2{display:flex;gap:8px;margin-top:10px}
+  .row2 button{flex:1}
+  .list{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+  .item{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#1C2A39;border:1px solid rgba(233,239,246,.15)}
+  .item .title{font-size:16px}
+  .item .meta{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>🟢 PogoPlanet Button (Web)</h1>
+
+    <!-- Direkt verbinden -->
+    <div class="row">
+      <input id="host" placeholder="HOST:PORT  (z. B. 192.168.0.23:8080)" style="flex:1"/>
+      <button id="connect" class="primary">Verbinden</button>
+    </div>
+
+    <!-- Auto-Join -->
+    <div class="row" style="margin-top:8px;justify-content:space-between">
+      <label><input id="autojoin" type="checkbox"/> Auto-Join</label>
+      <span class="id">ID: <span id="pid">–</span></span>
+    </div>
+
+    <!-- Discovery / Liste -->
+    <div class="row" style="margin-top:8px">
+      <input id="subnet" placeholder="Subnetz-Prefix (z. B. 192.168.178)" style="flex:1" />
+      <button id="scan" class="primary">Server suchen</button>
+    </div>
+    <div id="scanStatus" class="status" style="display:none"></div>
+    <div id="list" class="list"></div>
+
+    <!-- Status + Ping -->
+    <div class="status">
+      <span class="chip"><span id="dot" class="dot"></span><span id="status">Bereit. Host eintragen oder 'Server suchen'.</span></span>
+      <span class="chip">Ping: <span id="ping">–</span> ms</span>
+    </div>
+
+    <div id="pad" class="pad">Halten zum Drehen</div>
+
+    <div class="row2">
+      <button id="restart" class="primary" disabled>Restart Level</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---- UI ----
+  const elHost=document.getElementById('host');
+  const elConnect=document.getElementById('connect');
+  const elAuto=document.getElementById('autojoin');
+  const elStatus=document.getElementById('status');
+  const elDot=document.getElementById('dot');
+  const elPad=document.getElementById('pad');
+  const elPid=document.getElementById('pid');
+  const elPing=document.getElementById('ping');
+  const btnRestart=document.getElementById('restart');
+  const elSubnet=document.getElementById('subnet');
+  const elScan=document.getElementById('scan');
+  const elList=document.getElementById('list');
+  const elScanStatus=document.getElementById('scanStatus');
+
+  // ---- State ----
+  let ws=null, holding=false, connected=false;
+  let host=localStorage.getItem('pogo_host')||'';
+  let playerId=+(localStorage.getItem('pogo_id')||0);
+  elHost.value=host; elPid.textContent=playerId||'–';
+
+  // Auto-Join Setting
+  elAuto.checked=(localStorage.getItem('pogo_autojoin')||'1')==='1';
+  elAuto.onchange=()=>localStorage.setItem('pogo_autojoin', elAuto.checked?'1':'0');
+
+  // Ping
+  let pingTimer=null, lastPingStamp=0;
+
+  // Backoff Reconnect
+  let reconnectTimer=null, backoffMs=1000;
+  const BACKOFF_FACTOR=1.7, BACKOFF_MAX=10000;
+
+  // Defaults für Subnetz (einmal merken)
+  elSubnet.value = localStorage.getItem('pogo_subnet') || '192.168.178';
+
+  function setStatus(t,c){ elStatus.textContent=t; elDot.className='dot '+(c||''); }
+  function enableControls(isConn){ connected=isConn; btnRestart.disabled=!isConn; }
+  function wsUrlFromHost(h){ h=h.trim(); if(!h) return ''; if(h.startsWith('ws://')||h.startsWith('wss://')){ if(!/\/ws(\b|\/|$)/.test(h)) h+='/ws'; return h; } return `ws://${h}/ws`; }
+  function safeSend(s){ if(ws && ws.readyState===WebSocket.OPEN){ try{ws.send(s);}catch{} } }
+
+  // ---- Ping
+  function startPing(){ stopPing(); pingTimer=setInterval(()=>{ if(!connected||!playerId) return; lastPingStamp=performance.now(); safeSend(`PING;${playerId}`); },1500); }
+  function stopPing(){ if(pingTimer){ clearInterval(pingTimer); pingTimer=null; } elPing.textContent='–'; }
+
+  // ---- Reconnect
+  function scheduleReconnect(){
+    clearTimeout(reconnectTimer);
+    if(!elAuto.checked){ setStatus('Getrennt. Auto-Join ist aus.', 'warn'); return; }
+    reconnectTimer=setTimeout(()=>{ if(host) connect(host); }, backoffMs);
+    backoffMs=Math.min(Math.floor(backoffMs*BACKOFF_FACTOR), BACKOFF_MAX);
+    setStatus(`Getrennt. Neuer Versuch in ${(backoffMs/1000).toFixed(1)}s…`, 'warn');
+  }
+  function resetBackoff(){ backoffMs=1000; }
+
+  // ---- Connect
+  function connect(h){
+    if(ws){ try{ws.close();}catch{} ws=null; }
+    stopPing(); enableControls(false);
+    host=h.trim(); if(!host){ setStatus('Bitte HOST:PORT eingeben.','warn'); return; }
+    localStorage.setItem('pogo_host', host);
+
+    const url=wsUrlFromHost(host);
+    setStatus(`Verbinde… (${url})`,'warn');
+
+    try{ ws=new WebSocket(url); }catch(e){ setStatus('WebSocket konnte nicht erstellt werden.','err'); scheduleReconnect(); return; }
+
+    ws.onopen=()=>{ resetBackoff(); setStatus('Verbunden. Spieler prüfen…','ok'); enableControls(true); if(!playerId) safeSend('JOIN'); startPing(); };
+    ws.onclose=()=>{ enableControls(false); stopPing(); scheduleReconnect(); };
+    ws.onerror=()=>{ setStatus('Verbindungsfehler. Host/Port prüfen.','err'); };
+
+    ws.onmessage=(ev)=>{
+      const msg=(ev.data||'').trim(); if(!msg) return;
+      if(msg.startsWith('OK;')){ const id=+msg.split(';')[1]; if(id>0){ playerId=id; localStorage.setItem('pogo_id',String(id)); elPid.textContent=id; setStatus(`Verbunden • ID ${id}`,'ok'); } return; }
+      if(msg==='NEEDJOIN'){ safeSend('JOIN'); return; }
+      if(msg.startsWith('PONG;')){ if(lastPingStamp){ const rtt=Math.max(0,Math.round(performance.now()-lastPingStamp)); elPing.textContent=rtt; lastPingStamp=0; } return; }
+    };
+  }
+
+  // ---- Hold Button
+  const press=(e)=>{ e.preventDefault(); if(!holding){ holding=true; elPad.classList.add('holding'); if(connected&&playerId) safeSend(`DOWN;${playerId}`); } };
+  const rel  =(e)=>{ e.preventDefault(); if(holding){ holding=false; elPad.classList.remove('holding'); if(connected&&playerId) safeSend(`UP;${playerId}`); } };
+  elPad.addEventListener('pointerdown',press);
+  elPad.addEventListener('pointerup',rel);
+  elPad.addEventListener('pointercancel',rel);
+  elPad.addEventListener('pointerleave',rel);
+  elPad.addEventListener('touchstart',press,{passive:false});
+  elPad.addEventListener('touchend',rel);
+  elPad.addEventListener('mousedown',press);
+  elPad.addEventListener('mouseup',rel);
+
+  // ---- Restart
+  btnRestart.onclick=()=>{ if(connected) safeSend('RESTART'); };
+
+  // ---- Manual connect
+  elConnect.onclick=()=>connect(elHost.value);
+
+  // ---- Discovery scan via HTTP (Port 8090)
+  async function discover(prefix){
+    // prefix wie "192.168.178"
+    localStorage.setItem('pogo_subnet', prefix);
+    elScanStatus.style.display='block';
+    elScanStatus.textContent='Suche läuft…';
+    elList.innerHTML='';
+
+    const maxIp = 254;
+    const timeoutMs = 500;
+    const found = [];
+
+    function fetchWithTimeout(url, ms) {
+      const ctrl = new AbortController();
+      const t = setTimeout(()=>ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal, mode:'cors' }).finally(()=>clearTimeout(t));
+    }
+
+    const jobs = [];
+    for (let i=1;i<=maxIp;i++){
+      const ip = `${prefix}.${i}`;
+      const url = `http://${ip}:8090/discover`;
+      const job = fetchWithTimeout(url, timeoutMs)
+        .then(async r => {
+          if (!r.ok) return;
+          const data = await r.json().catch(()=>null);
+          if (!data) return;
+          found.push({ ip, data });
+        })
+        .catch(()=>{});
+      jobs.push(job);
+      // in Batches laufen lassen, um Browser nicht zu überlasten
+      if (jobs.length % 32 === 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.allSettled(jobs.splice(0, jobs.length));
+      }
+    }
+    await Promise.allSettled(jobs);
+
+    if (!found.length){
+      elScanStatus.textContent='Keine Server gefunden. Prüfe Subnetz/Firewall.';
+      return;
+    }
+    elScanStatus.textContent = `Gefunden: ${found.length} Server`;
+    // Liste rendern
+    elList.innerHTML = '';
+    for (const f of found){
+      const card = document.createElement('div');
+      card.className='item';
+      const wsHost = `${f.ip}:${f.data.wsPort}`;
+      card.innerHTML = `
+        <div class="title">${f.data.name || 'PogoPlanet'}</div>
+        <div class="meta">${f.data.scene || ''} • Spieler: ${f.data.players ?? 0}</div>
+        <div class="meta">WS: ws://${wsHost}${f.data.wsRoute || '/ws'}</div>
+        <button class="primary" style="margin-top:6px">Beitreten</button>`;
+      card.querySelector('button').onclick = () => {
+        elHost.value = wsHost;
+        connect(wsHost);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+      elList.appendChild(card);
+    }
+  }
+
+  elScan.onclick = () => {
+    const p = (elSubnet.value||'').trim();
+    if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(p)){ elScanStatus.style.display='block'; elScanStatus.textContent='Bitte Subnetz-Prefix wie 192.168.178 eingeben.'; return; }
+    discover(p);
+  };
+
+  // ---- Lifecycle
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ if(elAuto.checked && host && (!ws || ws.readyState!==WebSocket.OPEN)) connect(host); } });
+  window.addEventListener('beforeunload',()=>{ try{ ws && ws.close(); }catch{} });
+
+  // ---- Auto start
+  if (host && elAuto.checked) connect(host);
+})();
+</script>
+</body>
+</html>
