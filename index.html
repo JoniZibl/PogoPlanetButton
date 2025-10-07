@@ -6,33 +6,17 @@
 <title>PogoPlanet Button (Web)</title>
 <style>
   :root{
-    --bg:#1F2A39;
-    --bg2:#2C3D4E;
-    --btn:#288164;
-    --text:#E3E3E3;
-    --muted:#C9D3DF;
-    --warn:#F59E0B;
-    --err:#EF4444;
-    --ok:#22C55E;
+    --bg:#1F2A39; --bg2:#2C3D4E; --btn:#288164;
+    --text:#E3E3E3; --muted:#C9D3DF; --warn:#F59E0B; --err:#EF4444; --ok:#22C55E;
   }
-  *{box-sizing:border-box}
-  html,body{height:100%}
+  *{box-sizing:border-box} html,body{height:100%}
   body{
-    margin:0;
-    background:linear-gradient(180deg,var(--bg),var(--bg2) 70%);
-    color:var(--text);
-    font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial;
-    font-weight:900; /* dicke prägnante Schrift */
-    letter-spacing:.2px;
+    margin:0; background:linear-gradient(180deg,var(--bg),var(--bg2) 70%);
+    color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+    font-weight:900; letter-spacing:.2px;
   }
   .wrap{max-width:760px;margin:0 auto;padding:16px}
-  .card{
-    background:rgba(44,61,78,.75);
-    border:1px solid rgba(233,239,246,.12);
-    border-radius:16px;
-    padding:16px;
-    backdrop-filter: blur(6px);
-  }
+  .card{background:rgba(44,61,78,.75);border:1px solid rgba(233,239,246,.12);border-radius:16px;padding:16px;backdrop-filter:blur(6px)}
   h1{margin:0 0 12px;font-size:22px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   input,button{
@@ -40,27 +24,23 @@
     background:#1C2A39;color:var(--text);padding:0 12px;font-size:16px;font-weight:900;
   }
   input::placeholder{color:#9fb0c0;font-weight:700}
-  button.primary{
-    background:var(--btn); border:none; color:var(--text);
-    box-shadow: 0 4px 0 rgba(0,0,0,.25);
-  }
-  button.primary:active{transform:translateY(1px); box-shadow: 0 3px 0 rgba(0,0,0,.25)}
-  button[disabled]{opacity:.55; filter:grayscale(.2)}
+  button.primary{background:var(--btn);border:none;color:var(--text);box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  button.primary:active{transform:translateY(1px);box-shadow:0 3px 0 rgba(0,0,0,.25)}
+  button[disabled]{opacity:.55;filter:grayscale(.2)}
+  label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
   .status{margin-top:8px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#1C2A39;border:1px solid rgba(233,239,246,.15)}
   .dot{width:10px;height:10px;border-radius:999px;background:#8aa0b7}
   .ok{background:var(--ok)} .warn{background:var(--warn)} .err{background:var(--err)}
   .pad{
-    user-select:none;-webkit-user-select:none;touch-action:none;
-    height:58vh;min-height:320px;margin-top:14px;border-radius:18px;
-    border:2px dashed rgba(233,239,246,.18);
-    display:flex;align-items:center;justify-content:center;
-    background: radial-gradient(900px 560px at 50% 10%, rgba(40,129,100,.30), transparent 60%), rgba(28,42,57,.75);
+    user-select:none;-webkit-user-select:none;touch-action:none;height:58vh;min-height:320px;margin-top:14px;border-radius:18px;
+    border:2px dashed rgba(233,239,246,.18);display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(900px 560px at 50% 10%, rgba(40,129,100,.30), transparent 60%), rgba(28,42,57,.75);
     font-size:30px;
   }
   .pad.holding{
-    background: radial-gradient(900px 560px at 50% 10%, rgba(40,129,100,.55), transparent 60%), rgba(28,42,57,.95);
-    border-color: rgba(40,129,100,.65);
+    background:radial-gradient(900px 560px at 50% 10%, rgba(40,129,100,.55), transparent 60%), rgba(28,42,57,.95);
+    border-color:rgba(40,129,100,.65);
   }
   .row2{display:flex;gap:8px;margin-top:10px}
   .row2 button{flex:1}
@@ -78,10 +58,14 @@
       <button id="connect" class="primary">Verbinden</button>
     </div>
 
-    <div class="status" id="statusRow">
+    <div class="row" style="margin-top:8px;justify-content:space-between">
+      <label><input id="autojoin" type="checkbox"/> Auto-Join</label>
+      <span class="id">ID: <span id="pid">–</span></span>
+    </div>
+
+    <div class="status">
       <span class="chip"><span id="dot" class="dot"></span><span id="status">Bereit. Host eintragen und verbinden.</span></span>
       <span class="chip">Ping: <span id="ping">–</span> ms</span>
-      <span class="meta"><span class="chip id">ID: <span id="pid">–</span></span></span>
     </div>
 
     <div id="pad" class="pad">Halten zum Drehen</div>
@@ -94,203 +78,97 @@
 
 <script>
 (() => {
-  // ---------- UI ----------
-  const elHost     = document.getElementById('host');
-  const elConnect  = document.getElementById('connect');
-  const elStatus   = document.getElementById('status');
-  const elDot      = document.getElementById('dot');
-  const elPad      = document.getElementById('pad');
-  const elPid      = document.getElementById('pid');
-  const elPing     = document.getElementById('ping');
-  const btnRestart = document.getElementById('restart');
+  const elHost=document.getElementById('host');
+  const elConnect=document.getElementById('connect');
+  const elAuto=document.getElementById('autojoin');
+  const elStatus=document.getElementById('status');
+  const elDot=document.getElementById('dot');
+  const elPad=document.getElementById('pad');
+  const elPid=document.getElementById('pid');
+  const elPing=document.getElementById('ping');
+  const btnRestart=document.getElementById('restart');
 
-  // ---------- State ----------
-  let ws = null;
-  let host = localStorage.getItem('pogo_host') || '';
-  let playerId = +(localStorage.getItem('pogo_id') || 0);
-  let holding = false;
-  let connected = false;
+  let ws=null, holding=false, connected=false;
+  let host=localStorage.getItem('pogo_host')||'';
+  let playerId=+(localStorage.getItem('pogo_id')||0);
+  elHost.value=host; elPid.textContent=playerId||'–';
+
+  // auto-join setting
+  elAuto.checked=(localStorage.getItem('pogo_autojoin')||'1')==='1';
+  elAuto.onchange=()=>localStorage.setItem('pogo_autojoin', elAuto.checked?'1':'0');
 
   // ping
-  let pingTimer = null;
-  let lastPingStamp = 0;
+  let pingTimer=null, lastPingStamp=0;
 
-  // reconnect backoff
-  let reconnectTimer = null;
-  let backoffMs = 1000;       // start
-  const BACKOFF_FACTOR = 1.7; // grows
-  const BACKOFF_MAX = 10000;  // cap
+  // backoff reconnect
+  let reconnectTimer=null, backoffMs=1000;
+  const BACKOFF_FACTOR=1.7, BACKOFF_MAX=10000;
 
-  // init UI
-  elHost.value = host;
-  elPid.textContent = playerId || '–';
-  setStatus('Bereit. Host eintragen und verbinden.', null);
+  function setStatus(text,color){ elStatus.textContent=text; elDot.className='dot '+(color||''); }
+  function enableControls(isConn){ connected=isConn; btnRestart.disabled=!isConn; }
+  function wsUrlFromHost(h){ h=h.trim(); if(!h) return ''; if(h.startsWith('ws://')||h.startsWith('wss://')){ if(!/\/ws(\b|\/|$)/.test(h)) h+='/ws'; return h; } return `ws://${h}/ws`; }
+  function safeSend(s){ if(ws && ws.readyState===WebSocket.OPEN){ try{ws.send(s);}catch{} } }
 
-  function setStatus(text, color){
-    elStatus.textContent = text;
-    elDot.className = 'dot ' + (color || '');
-  }
-
-  function wsUrlFromHost(h){
-    h = h.trim();
-    if (!h) return '';
-    if (h.startsWith('ws://') || h.startsWith('wss://')){
-      if (!/\/ws(\b|\/|$)/.test(h)) h += '/ws';
-      return h;
-    }
-    return `ws://${h}/ws`;
-  }
-
-  function enableControls(isConnected){
-    connected = isConnected;
-    btnRestart.disabled = !isConnected;
-  }
-
-  function safeSend(s){
-    if (ws && ws.readyState === WebSocket.OPEN){
-      try { ws.send(s); } catch {}
-    }
-  }
-
-  // ---- Ping handling
-  function startPing(){
-    stopPing();
-    pingTimer = setInterval(() => {
-      if (!connected || !playerId) return;
-      lastPingStamp = performance.now();
-      safeSend(`PING;${playerId}`);
-    }, 1500);
-  }
-  function stopPing(){
-    if (pingTimer){ clearInterval(pingTimer); pingTimer = null; }
-    elPing.textContent = '–';
-  }
+  function startPing(){ stopPing(); pingTimer=setInterval(()=>{ if(!connected||!playerId) return; lastPingStamp=performance.now(); safeSend(`PING;${playerId}`); },1500); }
+  function stopPing(){ if(pingTimer){ clearInterval(pingTimer); pingTimer=null; } elPing.textContent='–'; }
 
   function scheduleReconnect(){
     clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(() => {
-      if (host) connect(host);
-    }, backoffMs);
-    // increase backoff for next time
-    backoffMs = Math.min(Math.floor(backoffMs * BACKOFF_FACTOR), BACKOFF_MAX);
-    setStatus(`Getrennt. Neuer Verbindungsversuch in ${(backoffMs/1000).toFixed(1)}s…`, 'warn');
+    if(!elAuto.checked) { setStatus('Getrennt. Auto-Join ist aus.', 'warn'); return; }
+    reconnectTimer=setTimeout(()=>{ if(host) connect(host); }, backoffMs);
+    backoffMs=Math.min(Math.floor(backoffMs*BACKOFF_FACTOR), BACKOFF_MAX);
+    setStatus(`Getrennt. Neuer Versuch in ${(backoffMs/1000).toFixed(1)}s…`, 'warn');
   }
-
-  function resetBackoff(){
-    backoffMs = 1000;
-  }
+  function resetBackoff(){ backoffMs=1000; }
 
   function connect(h){
-    // close old
-    if (ws){ try{ ws.close(); }catch{} ws = null; }
-    stopPing();
-    enableControls(false);
+    if(ws){ try{ws.close();}catch{} ws=null; }
+    stopPing(); enableControls(false);
+    host=h.trim(); if(!host){ setStatus('Bitte HOST:PORT eingeben.','warn'); return; }
+    localStorage.setItem('pogo_host',host);
 
-    host = h.trim();
-    if (!host){ setStatus('Bitte HOST:PORT eingeben.', 'warn'); return; }
-    localStorage.setItem('pogo_host', host);
+    const url=wsUrlFromHost(host);
+    setStatus(`Verbinde… (${url})`,'warn');
 
-    const url = wsUrlFromHost(host);
-    setStatus(`Verbinde… (${url})`, 'warn');
+    try{ ws=new WebSocket(url); }catch(e){ setStatus('WebSocket konnte nicht erstellt werden.','err'); scheduleReconnect(); return; }
 
-    try{
-      ws = new WebSocket(url);
-    }catch(e){
-      setStatus('WebSocket konnte nicht erstellt werden.', 'err');
-      scheduleReconnect();
-      return;
-    }
+    ws.onopen=()=>{ resetBackoff(); setStatus('Verbunden. Spieler prüfen…','ok'); enableControls(true); if(!playerId) safeSend('JOIN'); startPing(); };
+    ws.onclose=()=>{ enableControls(false); stopPing(); scheduleReconnect(); };
+    ws.onerror=()=>{ setStatus('Verbindungsfehler. Host/Port prüfen.','err'); };
 
-    ws.onopen = () => {
-      resetBackoff();
-      setStatus('Verbunden. Spieler prüfen…', 'ok');
-      enableControls(true);
-      if (!playerId) safeSend('JOIN');
-      startPing();
-    };
-
-    ws.onclose = () => {
-      enableControls(false);
-      stopPing();
-      scheduleReconnect();
-    };
-
-    ws.onerror = () => {
-      setStatus('Verbindungsfehler. Host/Port prüfen.', 'err');
-    };
-
-    ws.onmessage = (ev) => {
-      const msg = (ev.data || '').trim();
-      if (!msg) return;
-
-      if (msg.startsWith('OK;')){
-        const id = +msg.split(';')[1];
-        if (id > 0){
-          playerId = id;
-          localStorage.setItem('pogo_id', String(playerId));
-          elPid.textContent = id;
-          setStatus(`Verbunden • ID ${id}`, 'ok');
-        }
-        return;
-      }
-
-      if (msg.startsWith('PONG;')){
-        if (lastPingStamp){
-          const rtt = Math.max(0, Math.round(performance.now() - lastPingStamp));
-          elPing.textContent = rtt;
-          lastPingStamp = 0;
-        }
-        return;
-      }
-
-      if (msg === 'NEEDJOIN'){
-        safeSend('JOIN');
-        return;
-      }
+    ws.onmessage=(ev)=>{
+      const msg=(ev.data||'').trim();
+      if(!msg) return;
+      if(msg.startsWith('OK;')){ const id=+msg.split(';')[1]; if(id>0){ playerId=id; localStorage.setItem('pogo_id',String(id)); elPid.textContent=id; setStatus(`Verbunden • ID ${id}`,'ok'); } return; }
+      if(msg==='NEEDJOIN'){ safeSend('JOIN'); return; }
+      if(msg.startsWith('PONG;')){ if(lastPingStamp){ const rtt=Math.max(0,Math.round(performance.now()-lastPingStamp)); elPing.textContent=rtt; lastPingStamp=0; } return; }
     };
   }
 
-  function down(){
-    if (!connected || !playerId) return;
-    safeSend(`DOWN;${playerId}`);
-  }
-  function up(){
-    if (!connected || !playerId) return;
-    safeSend(`UP;${playerId}`);
-  }
+  // hold area
+  const press=(e)=>{ e.preventDefault(); if(!holding){ holding=true; elPad.classList.add('holding'); if(connected&&playerId) safeSend(`DOWN;${playerId}`); } };
+  const rel  =(e)=>{ e.preventDefault(); if(holding){ holding=false; elPad.classList.remove('holding'); if(connected&&playerId) safeSend(`UP;${playerId}`); } };
+  elPad.addEventListener('pointerdown',press);
+  elPad.addEventListener('pointerup',rel);
+  elPad.addEventListener('pointercancel',rel);
+  elPad.addEventListener('pointerleave',rel);
+  elPad.addEventListener('touchstart',press,{passive:false});
+  elPad.addEventListener('touchend',rel);
+  elPad.addEventListener('mousedown',press);
+  elPad.addEventListener('mouseup',rel);
 
-  // ---------- UI handlers ----------
-  elConnect.onclick = () => connect(elHost.value);
+  // restart
+  btnRestart.onclick=()=>{ if(connected) safeSend('RESTART'); };
 
-  const press = (e)=>{ e.preventDefault(); if (!holding){ holding=true; elPad.classList.add('holding'); down(); } };
-  const rel   = (e)=>{ e.preventDefault(); if (holding){ holding=false; elPad.classList.remove('holding'); up(); } };
-
-  elPad.addEventListener('pointerdown', press);
-  elPad.addEventListener('pointerup', rel);
-  elPad.addEventListener('pointercancel', rel);
-  elPad.addEventListener('pointerleave', rel);
-  // Fallbacks
-  elPad.addEventListener('touchstart', press, {passive:false});
-  elPad.addEventListener('touchend', rel);
-  elPad.addEventListener('mousedown', press);
-  elPad.addEventListener('mouseup', rel);
-
-  btnRestart.onclick = () => { if (connected) safeSend('RESTART'); };
+  // connect button
+  elConnect.onclick=()=>connect(elHost.value);
 
   // lifecycle
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible'){
-      // Sofort versuchen; Backoff bleibt gesetzt
-      if (host && (!ws || ws.readyState !== WebSocket.OPEN)) connect(host);
-    }
-  });
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ if(elAuto.checked && host && (!ws || ws.readyState!==WebSocket.OPEN)) connect(host); } });
+  window.addEventListener('beforeunload',()=>{ try{ ws && ws.close(); }catch{} });
 
-  window.addEventListener('beforeunload', () => {
-    try{ ws && ws.close(); }catch{}
-  });
-
-  // Auto-Verbinden falls Host gespeichert
-  if (host) connect(host);
+  // auto start if desired
+  if(host && elAuto.checked) connect(host);
 })();
 </script>
 </body>
